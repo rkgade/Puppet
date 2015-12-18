@@ -1,0 +1,101 @@
+# Site.pp file
+#node 'ip-172-31-58-56.ec2.internal' {
+node 'ip-172-31-58-57.ec2.internal' {
+        include install_packages
+	include install_hadoop
+	include install_webserver
+#	include hadoop
+#	include prac_mod
+#	import 'nodes.pp'
+        }
+$ipaddresses = ['192.168.1.101','192.168.1.102','192.168.1.103','192.168.1.104']
+class install_packages {
+        package {
+        ["nmap","telnet","traceroute"]:
+        ensure => latest,
+}
+
+}
+
+class install_hadoop {
+
+# download hadoop
+$path_syspath="/bin:/usr/bin"
+$hadoop_url = "https://archive.apache.org/dist/hadoop/common/hadoop-1.2.1/hadoop-1.2.1.tar.gz"
+
+exec {
+"wget ${hadoop_url}":
+cwd => '/home/hadoop',
+path => "${path_syspath}",
+creates => '/home/hadoop/hadoop-1.2.1.tar.gz'
+}
+->
+exec {
+        'tar -xvzf hadoop-1.2.1.tar.gz':
+        cwd => '/home/hadoop',
+        path => "${path_syspath}",
+
+        }
+->
+exec {
+        'mv hadoop-1.2.1  hadoop':
+        cwd => '/home/hadoop',
+        path =>"${path_syspath}"
+        }
+->
+exec {
+        'mkdir logs':
+        cwd => '/home/hadoop/hadoop',
+        path => "${path_syspath}",
+}
+
+
+
+}
+
+
+
+# install apache2
+class install_webserver{
+
+$apache= "apache2"
+package {
+        $apache:
+        ensure => 'installed',
+
+}
+#file {
+#        '/var/www/html/index.html':
+#        content => 'HELLO, my first puppet manifest !',
+#        require => Package["${apache}"],
+#}
+#
+service {
+$apache:
+ensure => 'running',
+require => File['/var/www/html/index.html'],
+}
+
+}
+# get values put from facter
+
+$ssh_service = $::operatingsystem? {
+	/Ubuntu|Debian/ => 'ssh',
+	default => 'sshd',
+}
+
+
+notify {
+	$ssh_service:
+}
+
+
+include hadoop
+
+$ipaddr = $::ipaddress
+file {
+	'/var/www/html/index.html':
+	content => template('prac_mod/httpd.conf.erb')
+
+}
+
